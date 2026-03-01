@@ -1,69 +1,92 @@
-// app/allergies.tsx
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { supabase } from "../src/lib/supabase";
+import { getMyMedicalId } from "../src/services/getMyMedicalId";
 
-import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { router } from "expo-router";
-
-import { colors } from "../src/themes/colors";
-import { spacing } from "../src/themes/spacing";
+type Row = {
+  id: string;
+  medical_id: string | null;
+  allergy: string;
+  severity: string | null;
+  created_at: string;
+};
 
 export default function Allergies() {
+  const [items, setItems] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const { medicalId } = await getMyMedicalId();
+
+      const { data, error } = await supabase
+        .from("allergies")
+        .select("*")
+        .eq("medical_id", medicalId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setItems((data ?? []) as Row[]);
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Failed to load allergies");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backTxt}>←</Text>
-        </Pressable>
+      <Text style={styles.title}>Allergy History</Text>
 
-        <Text style={styles.title}>Allergy History</Text>
+      {loading ? (
+        <View style={{ marginTop: 20 }}>
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <ScrollView style={{ marginTop: 14 }}>
+          {items.map((x) => (
+            <View key={x.id} style={styles.card}>
+              <Text style={styles.bold}>{x.allergy}</Text>
+              <Text>Severity: {x.severity ?? "mild"}</Text>
+              <Text style={styles.time}>
+                {new Date(x.created_at).toLocaleString()}
+              </Text>
+            </View>
+          ))}
 
-        <View style={{ width: 44 }} />
-      </View>
-
-      {/* Content */}
-      <View style={styles.card}>
-        <Text style={styles.text}>No allergies added yet.</Text>
-        <Text style={styles.subText}>Later we will add: food allergy, medicine allergy, etc.</Text>
-      </View>
+          {items.length === 0 && (
+            <Text style={{ textAlign: "center", marginTop: 20 }}>
+              No allergy record available.
+            </Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-
-  header: {
-    paddingTop: spacing.xl,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#F2F7FF",
-    borderWidth: 1,
-    borderColor: "#E6F0FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backTxt: { fontSize: 20, fontWeight: "900", color: colors.text },
-  title: { fontSize: 18, fontWeight: "900", color: colors.text },
-
+  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
+  title: { fontSize: 22, fontWeight: "900" },
   card: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: 18,
-    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#E6F0FF",
+    borderColor: "#eee",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
   },
-
-  text: { fontSize: 14.5, fontWeight: "900", color: colors.text },
-  subText: { marginTop: 8, fontSize: 13, fontWeight: "800", color: colors.mutedText },
+  bold: { fontWeight: "900" },
+  time: { marginTop: 6, color: "#666", fontSize: 12, fontWeight: "700" },
 });

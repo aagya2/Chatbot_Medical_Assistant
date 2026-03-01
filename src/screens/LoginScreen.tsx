@@ -15,6 +15,8 @@ import {
 import { router } from "expo-router";
 import { images } from "../assets/assets";
 import Svg, { Path } from "react-native-svg";
+import { supabase } from "../lib/supabase";
+import { ensureProfile } from "../services/ensureProfile";
 
 export function LoginScreen() {
   const [id, setId] = useState("");
@@ -27,14 +29,31 @@ export function LoginScreen() {
     [id, pass]
   );
 
-  const onLogin = () => {
-    setError("");
-    const ok = id.trim() === "sec" && pass === "2004";
-    if (!ok) {
-      setError("Invalid ID or password");
-      return;
+  const onLogin = async () => {
+    try {
+      setError("");
+
+      const email = id.trim();
+      const password = pass;
+
+      const { error: loginErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginErr) {
+        setError(loginErr.message);
+        return;
+      }
+
+      // ✅ IMPORTANT: create profiles row if missing (fixes foreign key errors)
+      await ensureProfile();
+
+      // login success
+      router.replace("/home" as any);
+    } catch (e: any) {
+      setError(e?.message ?? "Login failed");
     }
-    router.replace("/home" as any);
   };
 
   return (
@@ -52,8 +71,12 @@ export function LoginScreen() {
 
           {/* ONE sinusoidal wave (single layer) */}
           <View style={styles.waveWrap} pointerEvents="none">
-            <Svg width="100%" height="100%" viewBox="0 0 375 160" preserveAspectRatio="none">
-              {/* One smooth wave */}
+            <Svg
+              width="100%"
+              height="100%"
+              viewBox="0 0 375 160"
+              preserveAspectRatio="none"
+            >
               <Path
                 d="M0,70
                    C70,20 140,20 210,55
@@ -65,17 +88,18 @@ export function LoginScreen() {
           </View>
         </View>
 
-        {/* FORM (centered, not too low) */}
+        {/* FORM */}
         <View style={styles.formArea}>
           <View style={styles.inputPill}>
             <Text style={styles.pillIcon}>👤</Text>
             <TextInput
               value={id}
               onChangeText={setId}
-              placeholder="ID"
+              placeholder="Email"
               placeholderTextColor="#7A8CA4"
               style={styles.input}
               autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
@@ -112,7 +136,7 @@ export function LoginScreen() {
 
           <Pressable
             onPress={() =>
-              Alert.alert("Forgot Password", "Demo app: ID=sec, Password=2004")
+              Alert.alert("Forgot Password", "Use your Supabase email/password.")
             }
           >
             <Text style={styles.forgot}>Forgot Password?</Text>
@@ -130,7 +154,7 @@ const styles = StyleSheet.create({
 
   blueHeader: {
     backgroundColor: BRAND_BLUE,
-    height: 300, // blue area height
+    height: 300,
   },
 
   headerRow: {
@@ -152,20 +176,19 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "AvenirNext-Heavy" : "sans-serif",
     letterSpacing: 0.3,
   },
-waveWrap: {
-  position: "absolute",
-  left: -70,
-  right: -400,
-  bottom: -1,
-  height: 200,
-},
 
+  waveWrap: {
+    position: "absolute",
+    left: -70,
+    right: -400,
+    bottom: -1,
+    height: 200,
+  },
 
-  // Move up/down from here (one value)
   formArea: {
     flex: 1,
     paddingHorizontal: 26,
-    marginTop: 8, // pulls form slightly up (nice)
+    marginTop: 8,
     paddingTop: 46,
   },
 

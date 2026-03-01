@@ -41,7 +41,6 @@ export default function Home() {
         {/* Header (Premium) */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            {/* ✅ If logo exists, show it. Else show placeholder */}
             {logoSrc ? (
               <Image source={logoSrc} style={styles.logo} />
             ) : (
@@ -134,7 +133,7 @@ export default function Home() {
           </Pressable>
         </View>
 
-        {/* Doctor list (keep your existing list or premium list) */}
+        {/* Doctor list */}
         <DoctorCard
           name="Dr. Lisa"
           speciality="Cardiology"
@@ -281,7 +280,12 @@ const styles = StyleSheet.create({
   logoFallbackText: { fontWeight: "900", color: "#0B1B2B" },
 
   brand: { fontSize: 22, fontWeight: "900", color: colors.text },
-  welcome: { marginTop: 2, fontSize: 12, fontWeight: "800", color: colors.mutedText },
+  welcome: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.mutedText,
+  },
 
   menuBtn: {
     width: 44,
@@ -343,7 +347,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  servicePress: { width: "31%", alignItems: "center", borderRadius: 18, overflow: "hidden" },
+  servicePress: {
+    width: "31%",
+    alignItems: "center",
+    borderRadius: 18,
+    overflow: "hidden",
+  },
   serviceIcon: {
     width: 54,
     height: 54,
@@ -354,7 +363,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  serviceText: { marginTop: 8, fontSize: 12, fontWeight: "800", color: colors.text },
+  serviceText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.text,
+  },
 
   hospitalCard: {
     marginTop: spacing.xl,
@@ -368,7 +382,12 @@ const styles = StyleSheet.create({
   hospitalImg: { width: "100%", height: 150, resizeMode: "cover" },
   hospitalOverlay: { padding: spacing.lg },
   hospitalTitle: { fontSize: 16, fontWeight: "900", color: colors.text },
-  hospitalQuote: { marginTop: 6, fontSize: 12, fontWeight: "700", color: colors.mutedText },
+  hospitalQuote: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.mutedText,
+  },
 
   appointmentBtn: {
     marginTop: spacing.md,
@@ -391,6 +410,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: "900", color: colors.text },
 
-  seeAllBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, overflow: "hidden" },
+  seeAllBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
   seeAll: { fontSize: 12, fontWeight: "800", color: colors.primary },
 });
