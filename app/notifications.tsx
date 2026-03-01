@@ -109,9 +109,12 @@ export default function Notifications() {
             </View>
 
             {/* hamburger */}
-            <Pressable style={styles.hamburger} onPress={() => {}}>
-              <Text style={styles.hamburgerText}>≡</Text>
-            </Pressable>
+            <Pressable
+  style={styles.hamburger}
+  onPress={() => router.push("/profile" as any)}
+>
+  <Text style={styles.hamburgerText}>≡</Text>
+</Pressable>
           </View>
         </View>
 

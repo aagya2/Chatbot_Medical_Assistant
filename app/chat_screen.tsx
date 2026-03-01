@@ -1,6 +1,6 @@
 // app/virtual-assistant.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,14 @@ import {
   TextInput,
   Pressable,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { KeyboardAvoidingView, Platform } from "react-native";
 import { router } from "expo-router";
 
 import { colors } from "../src/themes/colors";
 import { spacing } from "../src/themes/spacing";
-import { images, icons } from "../src/assets/assets";
+import { images } from "../src/assets/assets";
 import { BottomNav } from "../src/components/BottomNav";
 import { predictDisease } from "../src/services/chatApi";
 
@@ -26,6 +27,17 @@ type Message = {
 };
 
 export default function VirtualAssistant() {
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      role: "bot",
+      text: "I am your Virtual Health Assistant. How can I help you today?",
+    },
+  ]);
+
   const isGreeting = (text: string) => {
     const greetings = [
       "hi",
@@ -44,24 +56,13 @@ export default function VirtualAssistant() {
 
     return greetings.includes(text.toLowerCase().trim());
   };
-  const [input, setInput] = useState("");
-
-  const [loading, setLoading] = useState(false);
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "bot",
-      text: "I am your Virtual Health Assistant. How can I help you today?",
-    },
-  ]);
 
   const onSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userText = input.trim();
 
-    // 1️⃣ Show user message
+    // show user message
     setMessages((prev) => [
       ...prev,
       {
@@ -73,7 +74,7 @@ export default function VirtualAssistant() {
 
     setInput("");
 
-    // 2️⃣ Greeting check (STOP prediction)
+    // greeting check
     if (isGreeting(userText)) {
       setMessages((prev) => [
         ...prev,
@@ -83,16 +84,28 @@ export default function VirtualAssistant() {
           text: "👋 Hi there! Please tell me your symptoms so I can help you 😊",
         },
       ]);
-      return; // ⛔ IMPORTANT: do NOT call backend
+      return;
     }
 
-    // 3️⃣ Only symptoms reach backend
     setLoading(true);
 
     try {
       const res = await predictDisease(userText);
-      const top = res.results[0];
+      const top = res?.results?.[0];
 
+      if (!top) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "_bot",
+            role: "bot",
+            text: "❌ Sorry, I couldn’t find a prediction.",
+          },
+        ]);
+        return;
+      }
+
+      // main answer
       setMessages((prev) => [
         ...prev,
         {
@@ -105,19 +118,22 @@ export default function VirtualAssistant() {
         },
       ]);
 
-      // 2️⃣ Follow-up questions (if any)
-      if (top.follow_up && top.follow_up.length > 0) {
-        top.follow_up.forEach((q: string, index: number) => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `${Date.now()}_follow_${index}`,
-              role: "bot",
-              text: `🤔 ${q}`,
-            },
-          ]);
-        });
-      }
+      // follow-up safely
+      const followUps = Array.isArray(top.follow_up)
+        ? top.follow_up
+        : [];
+
+      followUps.forEach((q: string, index: number) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}_follow_${index}`,
+            role: "bot",
+            text: `🤔 ${q}`,
+          },
+        ]);
+      });
+
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -157,10 +173,8 @@ export default function VirtualAssistant() {
             </View>
           </View>
 
-          {/* Curve */}
           <View style={styles.whiteCurve} />
 
-          {/* Title */}
           <View style={styles.titleRow}>
             <Text style={styles.pageTitle}>Virtual Assistant</Text>
             <Text style={styles.pageSub}>
@@ -179,33 +193,42 @@ export default function VirtualAssistant() {
                 ]}
               >
                 {m.role === "bot" && (
-                  <Image source={icons.bot} style={styles.avatar} />
+                  <View style={styles.avatarCircle}>
+                    <Text style={styles.avatarEmoji}>🤖</Text>
+                  </View>
                 )}
 
                 <View
                   style={[
                     styles.bubble,
-                    m.role === "user" ? styles.userBubble : styles.botBubble,
+                    m.role === "user"
+                      ? styles.userBubble
+                      : styles.botBubble,
                   ]}
                 >
                   <Text style={styles.msgText}>{m.text}</Text>
                 </View>
 
                 {m.role === "user" && (
-                  <Image source={icons.user} style={styles.avatar} />
-                )}
-                {loading && (
-                  <View style={[styles.msgRow, styles.msgLeft]}>
-                    <Image source={icons.bot} style={styles.avatar} />
-                    <View style={[styles.bubble, styles.botBubble]}>
-                      <Text style={styles.msgText}>
-                        🤖 Analyzing symptoms...
-                      </Text>
-                    </View>
+                  <View style={styles.avatarCircle}>
+                    <Text style={styles.avatarEmoji}>🙂</Text>
                   </View>
                 )}
               </View>
             ))}
+
+            {loading && (
+              <View style={[styles.msgRow, styles.msgLeft]}>
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarEmoji}>🤖</Text>
+                </View>
+                <View style={[styles.bubble, styles.botBubble]}>
+                  <Text style={styles.msgText}>
+                    🤖 Analyzing symptoms...
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Disclaimer */}
@@ -226,19 +249,25 @@ export default function VirtualAssistant() {
             placeholderTextColor="#7A8CA4"
             style={styles.input}
           />
-          <Pressable style={styles.sendBtn} onPress={onSend}>
-            <Text style={styles.sendText}>Send</Text>
+          <Pressable
+            style={styles.sendBtn}
+            onPress={onSend}
+            disabled={loading}
+          >
+            <Text style={styles.sendText}>
+              {loading ? "..." : "Send"}
+            </Text>
           </Pressable>
         </View>
 
-        {/* Bottom nav */}
         <BottomNav
           active={"message" as any}
           onPress={(key) => {
             if (key === "home") router.navigate("/home" as any);
             if (key === "notify") router.navigate("/notifications" as any);
             if (key === "phone") router.navigate("/recents" as any);
-            if (key === "message") router.navigate("/virtual-assistant" as any);
+            if (key === "message")
+              router.navigate("/virtual-assistant" as any);
           }}
         />
       </View>
@@ -249,9 +278,7 @@ export default function VirtualAssistant() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
 
-  scrollContent: {
-    paddingBottom: 160,
-  },
+  scrollContent: { paddingBottom: 160 },
 
   headerBlue: {
     height: 110,
@@ -282,7 +309,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     color: "#FFFFFF",
-    marginTop: -2,
   },
 
   whiteCurve: {
@@ -320,7 +346,17 @@ const styles = StyleSheet.create({
   msgLeft: { justifyContent: "flex-start" },
   msgRight: { justifyContent: "flex-end", alignSelf: "flex-end" },
 
-  avatar: { width: 36, height: 36, resizeMode: "contain" },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EAF3FF",
+    borderWidth: 1,
+    borderColor: "#DCEBFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarEmoji: { fontSize: 18 },
 
   bubble: {
     maxWidth: "75%",
@@ -371,18 +407,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
   },
   input: {
     flex: 1,
     fontSize: 14,
     fontWeight: "800",
     color: colors.text,
-    paddingRight: 10,
   },
   sendBtn: {
     paddingHorizontal: 14,
